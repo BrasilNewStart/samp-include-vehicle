@@ -68,6 +68,8 @@
 	-
 \* ========================================================================== */
 
+#include    < YSI_Coding\y_hooks >
+
 #if defined _inc_tdw_vyengine
 	// I remove this constant because the compiler automatically generates it.
 	//   github.com/Zeex/pawn/issues/107
@@ -79,11 +81,6 @@
 #endif
 
 #define _TDW_VH_SYS_VEHICLE_ENGINE
-
-#include "tdw_vehicle"
-
-// Modules
-#include "tdw_vsa_data"
 
 // -----------------------------------------------------------------------------
 // Definitions:
@@ -110,61 +107,15 @@ static stock const
 // -----------------------------------------------------------------------------
 // Hooks:
 
-// OnFilterScriptInit / OnGameModeInit hook
-#if defined FILTERSCRIPT
-	#if defined TDWVH_ENGIN@OnFilterScriptInit
-		forward TDWVH_ENGIN@OnFilterScriptInit();
-	#endif
+hook OnGameModeInit()
+{
+	ManualVehicleEngineAndLights();
 
-	public OnFilterScriptInit()
-	{
-		ManualVehicleEngineAndLights();
+	if (-1 != funcidx(TDW_g_sOnVehEngineStateChange))
+		TDW_g_sCallbacks |= 1;
 
-		if (-1 != funcidx(TDW_g_sOnVehEngineStateChange))
-			TDW_g_sCallbacks |= 1;
-
-		#if defined TDWVH_ENGIN@OnFilterScriptInit
-			TDWVH_ENGIN@OnFilterScriptInit();
-		#endif
-
-		return 1;
-	}
-
-	#if defined _ALS_OnFilterScriptInit
-		#undef OnFilterScriptInit
-	#else
-		#define _ALS_OnFilterScriptInit
-	#endif
-
-	#define OnFilterScriptInit TDWVH_ENGIN@OnFilterScriptInit
-#else
-	#if defined TDWVH_ENGIN@OnGameModeInit
-		forward TDWVH_ENGIN@OnGameModeInit();
-	#endif
-
-	public OnGameModeInit()
-	{
-		ManualVehicleEngineAndLights();
-
-		if (-1 != funcidx(TDW_g_sOnVehEngineStateChange))
-			TDW_g_sCallbacks |= 1;
-
-		#if defined TDWVH_ENGIN@OnGameModeInit
-			TDWVH_ENGIN@OnGameModeInit();
-		#endif
-
-		return 1;
-	}
-
-	#if defined _ALS_OnGameModeInit
-		#undef OnGameModeInit
-	#else
-		#define _ALS_OnGameModeInit
-	#endif
-
-	#define OnGameModeInit TDWVH_ENGIN@OnGameModeInit
-#endif
-
+	return 1;
+}
 
 // OnPlayerStateChange hook
 #if defined TDWVH_ENGIN@OnPlayerStateChange
