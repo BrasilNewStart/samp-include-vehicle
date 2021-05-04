@@ -75,8 +75,6 @@
 
 #define _TDW_VH_GTASA_DATA
 
-#include "tdw_vehicle"
-
 // -----------------------------------------------------------------------------
 // Enumerations:
 
@@ -303,7 +301,7 @@ stock GetModelStaticSpeed(modelid)
 stock
 	GetModelStaticIdFromName(const name[])
 {
-	for (new i = sizeof TDW_g_sVehicleNames; --i != -1;) {
+	for (new i = sizeof TDW_g_sVehicleNames; --i != 0;) {
 		if (strcmp(name, TDW_g_sVehicleNames[i], true) != 0)
 			continue;
 		return i + MIN_VEHICLE_MODEL;
