@@ -71,11 +71,6 @@
 
 #define _TDW_VH_SYS_VEHICLE_NEON
 
-#include "tdw_vehicle"
-
-// Modules
-#include "tdw_vsa_data"
-
 // -----------------------------------------------------------------------------
 // Enumerations:
 
@@ -102,33 +97,6 @@ _TDW_STATIC_ENUM enum E_TDW_NEON_OBJECTS
 static stock
 	TDW_g_sNeon[MAX_VEHICLES][E_TDW_NEON_OBJECTS],
 	bool:TDW_g_sIsNeonAttached[MAX_VEHICLES char];
-
-// -----------------------------------------------------------------------------
-// Hooks:
-
-// OnVehicleDeath hook
-#if defined TDWHNE@OnVehicleDeath
-	forward OnVehicleDeath(vehicleid, killerid);
-#endif
-
-public
-	OnVehicleDeath(vehicleid, killerid)
-{
-	RemoveNeonFromVehicle(vehicleid);
-
-	#if defined TDWHNE@OnVehicleDeath
-		return TDWHNE@OnVehicleDeath(vehicleid, killerid);
-	#else
-		return 1;
-	#endif
-}
-#if defined _ALS_OnVehicleDeath
-	#undef OnVehicleDeath
-#else
-	#define _ALS_OnVehicleDeath
-#endif
-
-#define OnVehicleDeath TDWHNE@OnVehicleDeath
 
 // -----------------------------------------------------------------------------
 // Functions:
@@ -181,7 +149,7 @@ stock AddNeonToVehicle(vehicleid, E_TDW_NEON_COLOR:color)
 
 stock RemoveNeonFromVehicle(vehicleid)
 {
-	if (IsValidVehicle(vehicleid) == 0)
+	if (!IsValidVehicle(vehicleid))
 		return 0;
 	if (_:TDW_g_sIsNeonAttached{vehicleid} == 0) {
 		DestroyObject(TDW_g_sNeon[vehicleid][EI_NEON_LEFT_ID]);
