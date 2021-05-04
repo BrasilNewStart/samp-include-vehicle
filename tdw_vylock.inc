@@ -68,6 +68,8 @@
 	-
 \* ========================================================================== */
 
+#include    < YSI_Coding\y_hooks >
+
 #if defined _inc_tdw_vylock
 	// I remove this constant because the compiler automatically generates it.
 	//   github.com/Zeex/pawn/issues/107
@@ -79,8 +81,6 @@
 #endif
 
 #define _TDW_VH_SYS_LOCK
-
-#include "tdw_vehicle"
 
 // -----------------------------------------------------------------------------
 // Static scope:
@@ -95,56 +95,14 @@ static stock
 // Hooks:
 
 // OnFilterScriptInit / OnGameModeInit hook
-#if defined FILTERSCRIPT
-	#if defined TDWVH_LOCK@OnFilterScriptInit
-		forward TDWVH_LOCK@OnFilterScriptInit();
-	#endif
 
-	public OnFilterScriptInit()
-	{
-		if (funcidx(TDW_g_sOnPlayerTryEnterVehicle) != -1)
-			TDW_g_sCallbacks |= 1;
+hook OnGameModeInit()
+{
+	if (funcidx(TDW_g_sOnPlayerTryEnterVehicle) != -1)
+		TDW_g_sCallbacks |= 1;
 
-		#if defined TDWVH_LOCK@OnFilterScriptInit
-			TDWVH_LOCK@OnFilterScriptInit();
-		#endif
-
-		return 1;
-	}
-
-	#if defined _ALS_OnFilterScriptInit
-		#undef OnFilterScriptInit
-	#else
-		#define _ALS_OnFilterScriptInit
-	#endif
-
-	#define OnFilterScriptInit TDWVH_LOCK@OnFilterScriptInit
-#else
-	#if defined TDWVH_LOCK@OnGameModeInit
-		forward TDWVH_LOCK@OnGameModeInit();
-	#endif
-
-	public OnGameModeInit()
-	{
-		if (funcidx(TDW_g_sOnPlayerTryEnterVehicle) != -1)
-			TDW_g_sCallbacks |= 1;
-
-		#if defined TDWVH_LOCK@OnGameModeInit
-			TDWVH_LOCK@OnGameModeInit();
-		#endif
-
-		return 1;
-	}
-
-	#if defined _ALS_OnGameModeInit
-		#undef OnGameModeInit
-	#else
-		#define _ALS_OnGameModeInit
-	#endif
-
-	#define OnGameModeInit TDWVH_LOCK@OnGameModeInit
-#endif
-
+	return 1;
+}
 
 // OnPlayerEnterVehicle hook
 #if defined TDWVH_LOCK@OnPlayerEnterVehicle
@@ -157,8 +115,10 @@ public OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
 		if (TDW_g_sCallbacks & 1)
 			if (0 == CallLocalFunction(TDW_g_sOnPlayerTryEnterVehicle,
 				TDW_g_sSpecifier@ii, playerid, vehicleid))
+				{
+					SendClientMessage(playerid, -1, "Esse veículo está trancado, use: /trancar para abri-lo.");
 					ClearAnimations(playerid, 1);
-
+				}
 	#if defined TDWVH_LOCK@OnPlayerEnterVehicle
 		TDWVH_LOCK@OnPlayerEnterVehicle(playerid, vehicleid, ispassenger);
 	#endif
@@ -221,7 +181,7 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 
 stock LockVehicleDoors(vehicleid)
 {
-	if (0 == IsValidVehicle(vehicleid))
+	if (!IsValidVehicle(vehicleid))
 		return 0;
 	if (TDW_g_sIsVehicleDoorsLocked{vehicleid})
 		return 0;
@@ -257,7 +217,7 @@ stock LockVehicleDoors(vehicleid)
 
 stock UnlockVehicleDoors(vehicleid)
 {
-	if (0 == IsValidVehicle(vehicleid))
+	if (!IsValidVehicle(vehicleid))
 		return 0;
 	if (0 == _:TDW_g_sIsVehicleDoorsLocked{vehicleid})
 		return 0;
