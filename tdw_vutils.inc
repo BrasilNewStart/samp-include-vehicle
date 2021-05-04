@@ -1,5 +1,5 @@
 /* ========================================================================== *\
-	Useful functions
+	Vehicle Neon
 
 | Description:
 
@@ -26,30 +26,21 @@
 | Metadata:
 	[Functions]:
 		Stock:
-			- DestroyVehicles
-			- GetNumberOfValidVehicles
-			- IsVehicleOccupied
-			- IsVehicleSeatOccupied
-			- GetVehicleMaxPassengers
-			- GetVehicleDoorsCount
-			- IsValidModelForPaintjob
-			- GetVehicleWheelPos
-			- GetVehicleOccupant
-			- GetVehicleOccupantPlayers
-			- IsVehicleMoving
-			- IsVehicleBackwordsDirection
+			- AddNeonToVehicle
+			- RemoveNeonFromVehicle
 		Static:
 			-
 		Public:
-			-
+			- OnVehicleDeath
 		Hooks:
 			-
 	[Callbacks]:
-		-
+		- TDWHNE@OnVehicleDeath
 	[Definitions]:
 		-
 	[Enumerations]:
-		- E_TDW_VEHICLE_WHEEL
+		- E_TDW_NEON_COLOR
+		- E_TDW_NEON_OBJECTS
 	[Macros]:
 		-
 	[Tags]:
@@ -58,7 +49,8 @@
 		Global scope:
 			-
 		Static scope:
-			-
+			- TDW_g_sNeon
+			- TDW_g_sIsNeonAttached
 	[Natives]:
 		-
 	[Operators]:
@@ -67,463 +59,102 @@
 	-
 \* ========================================================================== */
 
-#if defined _inc_tdw_vutils
+#if defined _inc_tdw_vxneon
 	// I remove this constant because the compiler automatically generates it.
 	//   github.com/Zeex/pawn/issues/107
-	#undef _inc_tdw_vutils
+	#undef _inc_tdw_vxneon
 #endif
 
-#if defined _TDW_VH_USEFUL_FUNCTIONS
+#if defined _TDW_VH_SYS_VEHICLE_NEON
 	#endinput
 #endif
 
-#define _TDW_VH_USEFUL_FUNCTIONS
-
-#include "tdw_vehicle"
+#define _TDW_VH_SYS_VEHICLE_NEON
 
 // -----------------------------------------------------------------------------
 // Enumerations:
 
-enum E_TDW_VEHICLE_WHEEL
+enum E_TDW_NEON_COLOR
 {
-	FRONT_LEFT,  FRONT_RIGHT,
-	MIDDLE_LEFT, MIDDLE_RIGHT, // applies to vehicles with 3 axes
-	REAR_LEFT,   REAR_RIGTH
+	// objects
+	NEON_COLOR_RED = 18647,
+	NEON_COLOR_BLUE,
+	NEON_COLOR_GREEN,
+	NEON_COLOR_YELLOW,
+	NEON_COLOR_PINK,
+	NEON_COLOR_WHITE
 };
+
+_TDW_STATIC_ENUM enum E_TDW_NEON_OBJECTS
+{
+	EI_NEON_LEFT_ID,
+	EI_NEON_RIGHT_ID
+};
+
+// -----------------------------------------------------------------------------
+// Static scope:
+
+static stock
+	TDW_g_sNeon[MAX_VEHICLES][E_TDW_NEON_OBJECTS],
+	bool:TDW_g_sIsNeonAttached[MAX_VEHICLES char];
 
 // -----------------------------------------------------------------------------
 // Functions:
 
-/** ------------------------------------------------------------------------ **\
-<summary>DestroyVehicles</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock DestroyVehicles(const ...)
+stock AddNeonToVehicle(vehicleid, E_TDW_NEON_COLOR:color)
 {
-	const BYTES_PER_CELL = cellbits / charbits;
+	new
+		vehicle_model;
+
+	if ((vehicle_model = GetVehicleModel(vehicleid)) == 0)
+		return 0;
+	if (GetModelStaticType(vehicle_model) != CAR)
+		return 0;
 
 	new
-		count,
-		bytes_args;
+		Float:size_x,
+		Float:size_y,
+		Float:size_z;
 
-	// Get number (in bytes) of the variadic arguments
-	#emit LOAD.s.pri 8
-	#emit STOR.s.pri bytes_args
-
-	if (0 != bytes_args) {
-		new
-			darg_start,
-			darg_end,
-			ret;
-
-		// Get the pointer of start dynamic arguments
-		#emit LCTRL 5
-		#emit ADD.c 12
-		#emit STOR.s.pri darg_start
-
-		// Get the pointer of end dynamic arguments
-		#emit LOAD.s.alt bytes_args
-		#emit ADD
-		#emit STOR.s.pri darg_end
-
-		// Use it!
-		do {
-			// Get the value from te pointer
-			#emit LOAD.i
-			// Push the value
-			#emit PUSH.pri
-			#emit PUSH.c 4
-			#emit SYSREQ.c DestroyVehicle
-			// Get the return value from the called function
-			#emit STOR.s.pri ret
-
-			if (ret)
-				count++;
-
-			darg_end -= BYTES_PER_CELL;
-
-			#emit LOAD.s.pri darg_end
-		} while (darg_end > darg_start);
-
-		bytes_args += bytes_args + BYTES_PER_CELL;
-		// Restore the stack
-		#emit LCTRL 4
-		#emit LOAD.s.alt bytes_args
-		#emit ADD
-		#emit SCTRL 4
-	} else {
-		#if defined _TDW_VH_DETECT_FOREACH
-			foreach (new i: Vehicle)
-		#else
-			for (new i = _TDW_FOREACH_MAX_VEHICLES_; --i != 0;)
-		#endif
-		{
-			if (0 == DestroyVehicle(i))
-				++count;
-		}
-	}
-	return count;
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>GetNumberOfValidVehicles</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock GetNumberOfValidVehicles()
-{
-	#if defined _TDW_VH_DETECT_FOREACH
-		return Iter_Count(Vehicle);
-	#else
-		new
-			count;
-		for (new i = _TDW_FOREACH_MAX_VEHICLES_; --i != 0;)
-			if (IsValidVehicle(i))
-				++count;
-		return count;
-	#endif
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>IsVehicleOccupied</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock IsVehicleOccupied(vehicleid)
-{
-	if (IsValidVehicle(vehicleid)) {
-		#if defined foreach
-			foreach (new i: Player)
-		#else
-			for (new i = _TDW_FOREACH_MAX_PLAYERS_; --i != -1;)
-		#endif
-		{
-			if (0 != IsPlayerInVehicle(i, vehicleid))
-				return 1;
-		}
-	}
-	return 0;
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>IsVehicleSeatOccupied</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock IsVehicleSeatOccupied(vehicleid, seatid)
-{
-	if (IsValidVehicle(vehicleid)) {
-		#if defined foreach
-			foreach (new i: Player)
-		#else
-			for (new i = _TDW_FOREACH_MAX_PLAYERS_; --i != -1;)
-		#endif
-		{
-			if (0 == IsPlayerInVehicle(i, vehicleid))
-				continue;
-			if (GetPlayerVehicleSeat(i) != seatid)
-				continue;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>GetVehicleMaxPassengers</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock GetVehicleMaxPassengers(modelid)
-{
-	static const
-		vehicle_seat_data[MAX_VEHICLE_MODELS + 1 char] =
-	{
-		4, 2, 2, 2, 4, 4, 1, 2, 2, 4, 2, 2, 2, 4, 2, 2, 4, 2, 4, 2, 4, 4, 2, 2,
-		2, 1, 4, 4, 4, 2, 1, 7, 1, 2, 2, 0, 2, 7, 4, 2, 4, 1, 2, 2, 2, 4, 1, 2,
-		1, 0, 0, 2, 1, 1, 1, 2, 2, 2, 4, 4, 2, 2, 2, 2, 1, 1, 4, 4, 2, 2, 4, 2,
-		1, 1, 2, 2, 1, 2, 2, 4, 2, 1, 4, 3, 1, 1, 1, 4, 2, 2, 4, 2, 4, 1, 2, 2,
-		2, 4, 4, 2, 2, 1, 2, 2, 2, 2, 2, 4, 2, 1, 1, 2, 1, 1, 2, 2, 4, 2, 2, 1,
-		1, 2, 2, 2, 2, 2, 2, 2, 2, 4, 1, 1, 1, 2, 2, 2, 2, 7, 7, 1, 4, 2, 2, 2,
-		2, 2, 4, 4, 2, 2, 4, 4, 2, 1, 2, 2, 2, 2, 2, 2, 4, 4, 2, 2, 1, 2, 4, 4,
-		1, 0, 0, 1, 1, 2, 1, 2, 2, 1, 2, 4, 4, 2, 4, 1, 0, 4, 2, 2, 2, 2, 0, 0,
-		7, 2, 2, 1, 4, 4, 4, 2, 2, 2, 2, 2, 4, 2, 0, 0, 0, 4, 0, 0
-	};
-	return (
-		IS_VALID_MODEL(modelid)
-		? (vehicle_seat_data{modelid - MIN_VEHICLE_MODEL})
-		: 0
-	);
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>GetVehicleDoorsCount</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock GetVehicleDoorsCount(modelid)
-{
-	static const
-		vehicle_door_data[MAX_VEHICLE_MODELS + 1 char] =
-	{
-		4, 2, 2, 2, 4, 4, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 2, 4, 2, 4, 4, 2, 2,
-		0, 1, 4, 2, 2, 0, 0, 0, 0, 2, 2, 0, 2, 0, 4, 0, 2, 0, 2, 2, 2, 4, 0, 2,
-		0, 0, 0, 2, 0, 0, 0, 2, 2, 0, 4, 2, 0, 0, 0, 0, 0, 0, 4, 4, 0, 2, 4, 0,
-		0, 0, 2, 2, 1, 2, 2, 4, 0, 0, 2, 2, 0, 0, 0, 4, 4, 2, 4, 2, 4, 0, 0, 2,
-		2, 4, 2, 2, 2, 0, 0, 0, 0, 2, 2, 4, 2, 0, 0, 2, 0, 0, 2, 2, 4, 2, 2, 0,
-		1, 0, 0, 0, 2, 2, 2, 2, 2, 4, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 4, 2, 2, 2,
-		2, 2, 4, 4, 0, 2, 4, 4, 2, 0, 2, 0, 2, 2, 2, 2, 4, 4, 2, 2, 0, 2, 4, 0,
-		0, 0, 0, 0, 0, 2, 2, 0, 2, 0, 2, 4, 4, 0, 2, 2, 0, 4, 0, 2, 2, 2, 0, 0,
-		0, 2, 0, 0, 4, 4, 4, 2, 2, 0, 2, 2, 4, 2, 0, 0, 0, 2, 0, 0
-	};
-	return (
-		IS_VALID_MODEL(modelid)
-		? (vehicle_door_data{modelid - MIN_VEHICLE_MODEL})
-		: 0
-	);
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>IsValidModelForPaintjob</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock IsValidModelForPaintjob(modelid)
-{
-	switch (modelid) {
-		case 483: // 0
-			return 1;
-		case 575: // 1
-			return 2;
-		case 534, 535, 536, 558, 559, 560, 561, 562, 567, 576: // 012
-			return 3;
-	}
-	return 0;
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>GetVehicleWheelPos</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock GetVehicleWheelPos(vehicletype, E_TDW_VEHICLE_WHEEL:wheel, &Float:x,
-	&Float:y, &Float:z)
-{
-	if (0 == GetVehiclePos(vehicletype, x, y, z))
-		return _:(x = y = z = 0.0); // return 0
+	GetVehicleModelInfo(vehicle_model, VEHICLE_MODEL_INFO_SIZE, size_x, size_y,
+		size_z);
 
 	new
-		Float:z_angle,
-		Float:vehicle_x,
-		Float:vehicle_y,
-		Float:vehicle_z,
-		Float:div;
+		objectid;
+	const Float:OFFSET_Z = -0.6;
 
-	GetVehicleZAngle(vehicletype, z_angle);
-	vehicletype = GetVehicleModel(vehicletype);
+	objectid = TDW_g_sNeon[vehicleid][EI_NEON_LEFT_ID] = CreateObject(_:color,
+		0.0, 0.0, 0.0, // Positions
+		0.0, 0.0, 0.0, // Rotations
+		0.0 // Draw distance
+	);
+	AttachObjectToVehicle(objectid, vehicleid,
+		-size_x / 2.8, 0.0, OFFSET_Z, // Positions
+		0.0, 0.0, 0.0 // Rotations
+	);
+	objectid = TDW_g_sNeon[vehicleid][EI_NEON_RIGHT_ID] = CreateObject(_:color,
+		0.0, 0.0, 0.0, // Positions
+		0.0, 0.0, 0.0, // Rotations
+		0.0 // Draw distance
+	);
+	AttachObjectToVehicle(objectid, vehicleid,
+		size_x / 2.8, 0.0, OFFSET_Z, // Positions
+		0.0, 0.0, 0.0 // Rotations
+	);
 
-	switch (wheel)
-	{
-		case FRONT_LEFT, FRONT_RIGHT:
-			GetVehicleModelInfo(vehicletype,
-				VEHICLE_MODEL_INFO_WHEELSFRONT,
-				vehicle_x, vehicle_y, vehicle_z
-			);
-		case MIDDLE_LEFT, MIDDLE_RIGHT:
-			GetVehicleModelInfo(vehicletype,
-				VEHICLE_MODEL_INFO_WHEELSMID,
-				vehicle_x, vehicle_y, vehicle_z
-			);
-		case REAR_LEFT, REAR_RIGTH:
-			GetVehicleModelInfo(vehicletype,
-				VEHICLE_MODEL_INFO_WHEELSREAR,
-				vehicle_x, vehicle_y, vehicle_z
-			);
-	}
-
-	div = (_:wheel % 2) ? (vehicle_x) : (-vehicle_x);
-
-	x = (floatsin((z_angle = 360 - z_angle), degrees) * vehicle_y) +
-		(floatcos(z_angle, degrees) * div) + x;
-	y = (floatcos(z_angle, degrees) * vehicle_y) -
-		(floatsin(z_angle, degrees) * div) + y;
-	z = z + vehicle_z;
+	TDW_g_sIsNeonAttached{vehicleid} = true;
 
 	return 1;
 }
 
-/** ------------------------------------------------------------------------ **\
-<summary>GetVehicleOccupant</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock GetVehicleOccupant(vehicleid, seatid = 0)
+stock RemoveNeonFromVehicle(vehicleid)
 {
-	if (IsValidVehicle(vehicleid)) {
-		#if defined foreach
-			foreach (new i: Player)
-		#else
-			for (new i = _TDW_FOREACH_MAX_PLAYERS_; --i != -1;)
-		#endif
-		{
-			if (GetPlayerVehicleID(i) != vehicleid)
-				continue;
-			if (GetPlayerVehicleSeat(i) != seatid)
-				continue;
-
-			return i;
-		}
+	if (!IsValidVehicle(vehicleid))
+		return 0;
+	if (_:TDW_g_sIsNeonAttached{vehicleid} == 0) {
+		DestroyObject(TDW_g_sNeon[vehicleid][EI_NEON_LEFT_ID]);
+		DestroyObject(TDW_g_sNeon[vehicleid][EI_NEON_RIGHT_ID]);
+		TDW_g_sIsNeonAttached{vehicleid} = false;
 	}
-	return INVALID_PLAYER_ID;
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>GetVehicleOccupantPlayers</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock GetVehicleOccupantPlayers(vehicleid, playerlist[],
-	size = sizeof playerlist)
-{
-	if (IsValidVehicle(vehicleid))
-	{
-		new
-			array_index,
-			i;
-
-		#if defined foreach
-			foreach (new i: Player)
-		#else
-			for (new i = _TDW_FOREACH_MAX_PLAYERS_; --i != -1;)
-		#endif
-		{
-			if (GetPlayerVehicleID(i) != vehicleid)
-				continue;
-			if (array_index >= size)
-				break;
-			else playerlist[array_index++] = i;
-		}
-		if (0 != array_index) {
-			playerlist[array_index] = INVALID_VEHICLE_ID;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>IsVehicleMoving</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock IsVehicleMoving(vehicleid)
-{
-	new
-		Float:x,
-		Float:y,
-		Float:z;
-
-	if (0 != GetVehicleVelocity(vehicleid, x, y, z)) {
-		if (0 == _:floatcmp(x, 0.0) && 0 == _:floatcmp(y, 0.0) &&
-			0 == _:floatcmp(z, 0.0))
-			return 1;
-	}
-	return 0;
-}
-
-/** ------------------------------------------------------------------------ **\
-<summary>IsVehicleBackwordsDirection</summary>
-<param name=""></param>
-<returns>
-	-
-</returns>
-<remarks>
-</remarks>
-\** ------------------------------------------------------------------------ **/
-
-stock IsVehicleBackwordsDirection(vehicleid)
-{
-	new
-		Float:x,
-		Float:y,
-		Float:z;
-
-	if (GetVehicleVelocity(vehicleid, x, y, z))
-	{
-		new
-			Float:z_angle;
-
-		GetVehicleZAngle(vehicleid, z_angle);
-
-		if (z_angle < 90.0) {
-			if (x > 0.0 && y < 0.0)
-				return 1;
-		} else if (z_angle < 180.0) {
-			if (x > 0.0 && y > 0.0)
-				return 1;
-		} else if (z_angle < 270.0) {
-			if (x < 0.0 && y > 0.0)
-				return 1;
-		} else {
-			if (x < 0.0 && y < 0.0)
-				return 1;
-		}
-	}
-	return 0;
+	return 1;
 }
