@@ -44,6 +44,7 @@
 		- TDWVH_ENGIN@OnGameModeInit
 		- TDWVH_ENGIN@OnPlayerStateChange
 		- OnVehicleEngineStateChange
+		- OnVehicleLightsStateChange
 	[Definitions]:
 		- TDW_ENGINE_TIMER_TICK
 	[Enumerations]:
@@ -68,8 +69,6 @@
 	-
 \* ========================================================================== */
 
-#include    < YSI_Coding\y_hooks >
-
 #if defined _inc_tdw_vyengine
 	// I remove this constant because the compiler automatically generates it.
 	//   github.com/Zeex/pawn/issues/107
@@ -81,6 +80,11 @@
 #endif
 
 #define _TDW_VH_SYS_VEHICLE_ENGINE
+
+#include "tdw_vehicle"
+
+// Modules
+#include "tdw_vsa_data"
 
 // -----------------------------------------------------------------------------
 // Definitions:
@@ -94,10 +98,12 @@
 
 static stock
 	bool:TDW_g_sIsVehicleEngineStarted[MAX_VEHICLES char] = {false, ...},
+	bool:TDW_g_sIsVehicleLightsStarted[MAX_VEHICLES char] = {false, ...},
 	TDW_g_sCallbacks;
 
 static stock const
-	TDW_g_sOnVehEngineStateChange[] = !"OnVehicleEngineStateChange";
+	TDW_g_sOnVehEngineStateChange[] = !"OnVehicleEngineStateChange",
+	TDW_g_sOnVehLightsStateChange[] = !"OnVehicleLightsStateChange";
 
 #if TDW_ENGINE_TIMER_TICK > 0
 	static stock
@@ -107,15 +113,64 @@ static stock const
 // -----------------------------------------------------------------------------
 // Hooks:
 
-hook OnGameModeInit()
-{
-	ManualVehicleEngineAndLights();
+// OnFilterScriptInit / OnGameModeInit hook
+#if defined FILTERSCRIPT
+	#if defined TDWVH_ENGIN@OnFilterScriptInit
+		forward TDWVH_ENGIN@OnFilterScriptInit();
+	#endif
 
-	if (-1 != funcidx(TDW_g_sOnVehEngineStateChange))
-		TDW_g_sCallbacks |= 1;
+	public OnFilterScriptInit()
+	{
+		ManualVehicleEngineAndLights();
 
-	return 1;
-}
+		if (-1 != funcidx(TDW_g_sOnVehEngineStateChange))
+			TDW_g_sCallbacks |= 1;
+
+		if (-1 != funcidx(TDW_g_sOnVehLightsStateChange))
+			TDW_g_sCallbacks |= 1;
+
+		#if defined TDWVH_ENGIN@OnFilterScriptInit
+			TDWVH_ENGIN@OnFilterScriptInit();
+		#endif
+
+		return 1;
+	}
+
+	#if defined _ALS_OnFilterScriptInit
+		#undef OnFilterScriptInit
+	#else
+		#define _ALS_OnFilterScriptInit
+	#endif
+
+	#define OnFilterScriptInit TDWVH_ENGIN@OnFilterScriptInit
+#else
+	#if defined TDWVH_ENGIN@OnGameModeInit
+		forward TDWVH_ENGIN@OnGameModeInit();
+	#endif
+
+	public OnGameModeInit()
+	{
+		ManualVehicleEngineAndLights();
+
+		if (-1 != funcidx(TDW_g_sOnVehEngineStateChange))
+			TDW_g_sCallbacks |= 1;
+
+		#if defined TDWVH_ENGIN@OnGameModeInit
+			TDWVH_ENGIN@OnGameModeInit();
+		#endif
+
+		return 1;
+	}
+
+	#if defined _ALS_OnGameModeInit
+		#undef OnGameModeInit
+	#else
+		#define _ALS_OnGameModeInit
+	#endif
+
+	#define OnGameModeInit TDWVH_ENGIN@OnGameModeInit
+#endif
+
 
 // OnPlayerStateChange hook
 #if defined TDWVH_ENGIN@OnPlayerStateChange
@@ -223,6 +278,66 @@ stock IsVehicleEngineStarted(vehicleid)
 		TDW_g_sIsVehicleEngineStarted{vehicleid};
 }
 
+/** ------------------------------------------------------------------------ **\
+<summary>StartVehicleLights</summary>
+<param name="vehicleid">The ID of the vehicle</param>
+<returns>
+	-
+</returns>
+<remarks>
+</remarks>
+\** ------------------------------------------------------------------------ **/
+
+stock StartVehicleLights(vehicleid)
+{
+	if (0 == IsVehicleHasLights(vehicleid))
+		return 0;
+	if (TDW_g_sIsVehicleLightsStarted{vehicleid})
+		return 0;
+
+	ToggleVehicleLightsState(vehicleid, VEHICLE_PARAMS_ON);
+
+	return 1;
+}
+
+/** ------------------------------------------------------------------------ **\
+<summary>StopVehicleLights</summary>
+<param name="vehicleid">The ID of the vehicle</param>
+<returns>
+	-
+</returns>
+<remarks>
+</remarks>
+\** ------------------------------------------------------------------------ **/
+
+stock StopVehicleLights(vehicleid)
+{
+	if (0 == IsVehicleHasLights(vehicleid))
+		return 0;
+	if (0 == _:TDW_g_sIsVehicleLightsStarted{vehicleid})
+		return 0;
+
+	ToggleVehicleLightsState(vehicleid, VEHICLE_PARAMS_OFF);
+
+	return 1;
+}
+
+/** ------------------------------------------------------------------------ **\
+<summary>IsVehicleEngineStarted</summary>
+<param name="vehicleid">The ID of the vehicle</param>
+<returns>
+	-
+</returns>
+<remarks>
+</remarks>
+\** ------------------------------------------------------------------------ **/
+
+stock IsVehicleLightsStarted(vehicleid)
+{
+	return IsValidVehicle(vehicleid) &&
+		TDW_g_sIsVehicleLightsStarted{vehicleid};
+}
+
 // -----------------------------------------------------------------------------
 // Internal:
 
@@ -284,6 +399,55 @@ static stock ToggleVehicleEngineState(vehicleid,
 }
 
 // -----------------------------------------------------------------------------
+// Lights:
+
+static stock IsVehicleHasLights(vehicleid)
+{
+	new model = GetVehicleModel(vehicleid);
+
+	if (0 == model)
+		return 0;
+
+	return GetModelStaticType(model) != BIKE;
+}
+
+static stock ToggleVehicleLightsState(vehicleid,
+	newstate = VEHICLE_PARAMS_UNSET)
+{
+	new
+		engine,
+		lights,
+		alarm,
+		doors,
+		bonnet,
+		boot,
+		objective;
+
+	if (0 == GetVehicleParamsEx(vehicleid, engine, lights, alarm, doors, bonnet,
+		boot, objective))
+		return 0;
+
+	if (newstate == lights)
+		return 0;
+
+	if (newstate == VEHICLE_PARAMS_UNSET)
+		newstate = lights ? VEHICLE_PARAMS_OFF : VEHICLE_PARAMS_ON;
+
+	TDW_g_sIsVehicleLightsStarted{vehicleid} =
+		bool:(newstate == VEHICLE_PARAMS_ON);
+
+	SetVehicleParamsEx(vehicleid, engine, newstate, alarm, doors, bonnet, boot,
+		objective);
+
+	if (TDW_g_sCallbacks & 1)
+		CallLocalFunction(TDW_g_sOnVehLightsStateChange, !"ii", vehicleid,
+			newstate);
+
+	return 1;
+}
+
+// -----------------------------------------------------------------------------
 // Forwards:
 
 forward OnVehicleEngineStateChange(vehicleid, engine);
+forward OnVehicleLightsStateChange(vehicleid, lights);
