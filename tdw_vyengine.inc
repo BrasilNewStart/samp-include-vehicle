@@ -47,6 +47,9 @@
 		- OnVehicleLightsStateChange
 	[Definitions]:
 		- TDW_ENGINE_TIMER_TICK
+		- TDW_LIGHTS_VEHICLE_HOUR
+		- TDW_LIGHTS_HOUR_MIN
+		- TDW_LIGHTS_HOUR_MAX
 	[Enumerations]:
 		-
 	[Macros]:
@@ -91,6 +94,13 @@
 
 #if !defined TDW_ENGINE_TIMER_TICK
 	#define TDW_ENGINE_TIMER_TICK				(1000)
+#endif
+
+// Após das 18hrs até as 7hrs da manhã os faróis ligam automaticamente ao ligar o veículo
+#if !defined TDW_LIGHTS_VEHICLE_HOUR
+	#define TDW_LIGHTS_VEHICLE_HOUR				true
+	#define TDW_LIGHTS_HOUR_MIN					(7)		// 7:00
+	#define TDW_LIGHTS_HOUR_MAX					(18) 	// 18:00
 #endif
 
 // -----------------------------------------------------------------------------
@@ -259,6 +269,14 @@ stock StopVehicleEngine(vehicleid)
 
 	ToggleVehicleEngineState(vehicleid, VEHICLE_PARAMS_OFF);
 
+	#if TDW_LIGHTS_VEHICLE_HOUR
+		new horas, minutos, segundos;
+		gettime(horas, minutos, segundos);
+
+		if ((horas < TDW_LIGHTS_HOUR_MIN) || (horas > TDW_LIGHTS_HOUR_MAX))
+			StopVehicleLights(vehicleid);
+	#endif
+
 	return 1;
 }
 
@@ -393,6 +411,15 @@ static stock ToggleVehicleEngineState(vehicleid,
 
 	#if TDW_ENGINE_TIMER_TICK > 0
 		TDW_g_sVehicleTimerId[vehicleid] = -1;
+	#endif
+
+	// Após das 18hrs até as 7hrs da manhã os faróis ligam automaticamente ao ligar o veículo
+	#if TDW_LIGHTS_VEHICLE_HOUR
+		new horas, minutos, segundos;
+		gettime(horas, minutos, segundos);
+
+		if ((horas < TDW_LIGHTS_HOUR_MIN) || (horas > TDW_LIGHTS_HOUR_MAX))
+			StopVehicleLights(vehicleid);
 	#endif
 
 	return 1;
