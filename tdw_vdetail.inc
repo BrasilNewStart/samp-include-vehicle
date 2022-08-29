@@ -102,7 +102,7 @@ static stock
 // fit in size (VM - VirtualWorld).
 stock TDWVH_DETAIL@SetVehicleVW(vehicleid, worldid)
 {
-	if (0 == IsValidVehicle(vehicleid))
+	if (!IsValidVehicle(vehicleid))
 		return 0;
 
 	SetVehicleVirtualWorld(vehicleid,
@@ -190,9 +190,9 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 
 stock SetVehiclePaintjobId(vehicleid, paintjobid)
 {
-	if (0 == IsValidVehicle(vehicleid))
+	if (!IsValidVehicle(vehicleid))
 		return 0;
-	if (0 == IS_VALID_PAINTJOB(paintjobid))
+	if (!IS_VALID_PAINTJOB(paintjobid))
 		return 0;
 
 	ChangeVehiclePaintjob(vehicleid, paintjobid);
@@ -214,7 +214,7 @@ stock SetVehiclePaintjobId(vehicleid, paintjobid)
 
 stock GetVehicleLastDriverId(vehicleid)
 {
-	if (0 == IsValidVehicle(vehicleid))
+	if (!IsValidVehicle(vehicleid))
 		return 0;
 	return TDW_g_sVehicle@LastDriverId[vehicleid];
 }
