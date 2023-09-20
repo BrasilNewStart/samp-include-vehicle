@@ -102,7 +102,7 @@ enum E_TDW_VEHICLE_WHEEL
 </remarks>
 \** ------------------------------------------------------------------------ **/
 
-stock DestroyVehicles(const ...)
+stock DestroyVehicles(playerid)
 {
 	const BYTES_PER_CELL = cellbits / charbits;
 

@@ -201,7 +201,7 @@
 	// function.
 	DestroyVehicle(0);
 	SetVehicleNumberPlate(0, null_string);
-	Create3DTextLabel(null_string, 0, 0.0, 0.0, 0.0, 0.0, 0, 0);
+	Create3DTextLabel(null_string, 0, 0.0, 0.0, 0.0, 0.0, 0, false);
 	Attach3DTextLabelToVehicle(Text3D:0, 0, 0.0, 0.0, 0.0);
 	#if defined _TDW_VH_DETECT_STREAMER
 		UpdateDynamic3DTextLabelText(Text3D:0, 0, null_string);
