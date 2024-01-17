@@ -68,7 +68,7 @@
 	-
 \* ========================================================================== */
 
-#include    < YSI_Coding\y_hooks >
+#include <YSI_Coding\y_hooks>
 
 #if defined _inc_tdw_vylock
 	// I remove this constant because the compiler automatically generates it.
@@ -95,7 +95,6 @@ static stock
 // Hooks:
 
 // OnFilterScriptInit / OnGameModeInit hook
-
 hook OnGameModeInit()
 {
 	if (funcidx(TDW_g_sOnPlayerTryEnterVehicle) != -1)
@@ -105,42 +104,24 @@ hook OnGameModeInit()
 }
 
 // OnPlayerEnterVehicle hook
-#if defined TDWVH_LOCK@OnPlayerEnterVehicle
-	forward TDWVH_LOCK@OnPlayerEnterVehicle(playerid, vehicleid, ispassenger);
-#endif
-
-public OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
+hook OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
 {
-	if (IsVehicleLocked(vehicleid))
-		if (TDW_g_sCallbacks & 1)
+	if (IsVehicleLocked(vehicleid)) {
+		if (TDW_g_sCallbacks & 1) {
 			if (0 == CallLocalFunction(TDW_g_sOnPlayerTryEnterVehicle,
 				TDW_g_sSpecifier@ii, playerid, vehicleid))
 				{
-					SendClientMessage(playerid, -1, "Esse ve√≠culo est√° trancado, use: /trancar para abri-lo.");
+					SendClientMessage(playerid, -1, "Esse veÌculo est· trancado, use: /trancar para abri-lo.");
 					ClearAnimations(playerid, 1);
 				}
-	#if defined TDWVH_LOCK@OnPlayerEnterVehicle
-		TDWVH_LOCK@OnPlayerEnterVehicle(playerid, vehicleid, ispassenger);
-	#endif
+		}
+	}
 
 	return 1;
 }
 
-#if defined _ALS_OnPlayerEnterVehicle
-	#undef OnPlayerEnterVehicle
-#else
-	#define _ALS_OnPlayerEnterVehicle
-#endif
-
-#define OnPlayerEnterVehicle TDWVH_LOCK@OnPlayerEnterVehicle
-
-
 // OnPlayerStateChange hook
-#if defined TDWVH_LOCK@OnPlayerStateChange
-	forward TDWVH_LOCK@OnPlayerStateChange(playerid, newstate, oldstate);
-#endif
-
-public OnPlayerStateChange(playerid, newstate, oldstate)
+hook OnPlayerStateChange(playerid, newstate, oldstate)
 {
 	switch (newstate) {
 		case PLAYER_STATE_PASSENGER, PLAYER_STATE_DRIVER: {
@@ -150,21 +131,8 @@ public OnPlayerStateChange(playerid, newstate, oldstate)
 			}
 		}
 	}
-
-	#if defined TDWVH_LOCK@OnPlayerStateChange
-		TDWVH_LOCK@OnPlayerStateChange(playerid, newstate, oldstate);
-	#endif
-
 	return 1;
 }
-
-#if defined _ALS_OnPlayerStateChange
-	#undef OnPlayerStateChange
-#else
-	#define _ALS_OnPlayerStateChange
-#endif
-
-#define OnPlayerStateChange TDWVH_LOCK@OnPlayerStateChange
 
 // -----------------------------------------------------------------------------
 // Functions:
