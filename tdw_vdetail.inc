@@ -65,6 +65,8 @@
 	-
 \* ========================================================================== */
 
+#include <YSI_Coding\y_hooks>
+
 #if defined _inc_tdw_vdetail
 	// I remove this constant because the compiler automatically generates it.
 	//   github.com/Zeex/pawn/issues/107
@@ -121,57 +123,23 @@ stock TDWVH_DETAIL@SetVehicleVW(vehicleid, worldid)
 
 
 // OnVehiclePaintjob hook
-#if defined TDW_DETAIL@OnVehiclePaintjob
-	forward TDW_DETAIL@OnVehiclePaintjob(playerid, vehicleid, paintjobid);
-#endif
-
-public OnVehiclePaintjob(playerid, vehicleid, paintjobid)
+hook OnVehiclePaintjob(playerid, vehicleid, paintjobid)
 {
 	TDW_g_sVehicle@PaintjobId{vehicleid} = paintjobid;
-
-	#if defined TDW_DETAIL@OnVehiclePaintjob
-		TDW_DETAIL@OnVehiclePaintjob(playerid, vehicleid, paintjobid);
-	#endif
 
 	return 1;
 }
 
-#if defined _ALS_OnVehiclePaintjob
-	#undef OnVehiclePaintjob
-#else
-	#define _ALS_OnVehiclePaintjob
-#endif
-
-#define OnVehiclePaintjob TDW_DETAIL@OnVehiclePaintjob
-
-
 // OnPlayerStateChange hook
-#if defined TDW_DETAIL@OnPlayerStateChange
-	forward TDW_DETAIL@OnPlayerStateChange(playerid, newstate, oldstate);
-#endif
-
-public OnPlayerStateChange(playerid, newstate, oldstate)
+hook OnPlayerStateChange(playerid, newstate, oldstate)
 {
 	if (newstate == PLAYER_STATE_DRIVER) {
 		new vehicleid = GetPlayerVehicleID(playerid);
 
 		TDW_g_sVehicle@LastDriverId[vehicleid] = playerid;
 	}
-
-	#if defined TDW_DETAIL@OnPlayerStateChange
-		TDW_DETAIL@OnPlayerStateChange(playerid, newstate, oldstate);
-	#endif
-
 	return 1;
 }
-
-#if defined _ALS_OnPlayerStateChange
-	#undef OnPlayerStateChange
-#else
-	#define _ALS_OnPlayerStateChange
-#endif
-
-#define OnPlayerStateChange TDW_DETAIL@OnPlayerStateChange
 
 // -----------------------------------------------------------------------------
 // Functions:
